@@ -1,4 +1,3 @@
-# comics/views.py
 from rest_framework import viewsets, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -55,20 +54,20 @@ class GenericRepoViewSet(viewsets.ViewSet):
         obj = serializer.save()
         return Response(self.serializer_class(obj).data)
 
-    # def partial_update(self, request, pk=None):
-    #     obj = self.repo.get_by_id(pk)
-    #     if obj is None:
-    #         return Response(status=status.HTTP_404_NOT_FOUND)
-    #     serializer = self.serializer_class(obj, data=request.data, partial=True)
-    #     serializer.is_valid(raise_exception=True)
-    #     obj = serializer.save()
-    #     return Response(self.serializer_class(obj).data)
+
+    def partial_update(self, request, pk=None):
+        obj = self.repo.get_by_id(pk)
+        if obj is None:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        serializer = self.serializer_class(obj, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        obj = serializer.save()
+        return Response(self.serializer_class(obj).data)
 
     def destroy(self, request, pk=None):
         obj = self.repo.get_by_id(pk)
         if obj is None:
             return Response(status=status.HTTP_404_NOT_FOUND)
-        # використовуємо репозиторій, якщо є delete
         try:
             self.repo.delete(obj)
         except Exception:
@@ -128,6 +127,17 @@ def aggregated_report(request):
     total_reviews = len(review_repo.get_all())
     total_borrowings = len(borrowing_repo.get_all())
 
+
+    active_borrowings_qs = Borrowing.objects.filter(returndate__isnull=True)
+    active_borrowings = [{
+        'borrowid': b.borrowid,
+        'comic': b.comic.title,
+        'reader': f"{b.reader.firstname} {b.reader.lastname}",
+        'borrowdate': b.borrowdate,
+        'duedate': b.duedate
+    } for b in active_borrowings_qs]
+
+
     report = {
         'totals': {
             'authors': total_authors,
@@ -137,6 +147,7 @@ def aggregated_report(request):
             'publishers': total_publishers,
             'reviews': total_reviews,
             'borrowings': total_borrowings,
-        }
+        },
+        'active_borrowings': active_borrowings,
     }
     return Response(report)

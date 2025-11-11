@@ -1,4 +1,4 @@
-# comics/serializers.py
+
 import datetime
 
 from rest_framework import serializers
@@ -86,7 +86,6 @@ class ComicAuthorSerializer(serializers.ModelSerializer):
 
 
 class ComicSerializer(serializers.ModelSerializer):
-    # приймаємо і повертаємо тільки PK-список авторів
     authors = serializers.PrimaryKeyRelatedField(many=True, queryset=Author.objects.all())
     # releasedate = serializers.DateTimeField(format='%Y-%m-%d', default=datetime.date.today())
 
@@ -98,9 +97,9 @@ class ComicSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         authors = validated_data.pop('authors', [])
         comic = Comic(**validated_data)
-        comic = comic_repo.add(comic)  # зберегли через репозиторій
+        comic = comic_repo.add(comic)
 
-        # встановлюємо зв'язки через ComicAuthor (через репозиторій)
+
         for author in authors:
             ca = ComicAuthor(comic=comic, author=author)
             comicauthor_repo.add(ca)
@@ -113,7 +112,6 @@ class ComicSerializer(serializers.ModelSerializer):
         instance = comic_repo.update(instance)
 
         if authors is not None:
-            # видаляємо старі зв'язки і додаємо нові
             comicauthor_repo.delete_by_comic(instance)
             for author in authors:
                 ca = ComicAuthor(comic=instance, author=author)
