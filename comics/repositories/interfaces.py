@@ -1,6 +1,7 @@
+
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar, List, Optional
-from comics.models import Author, Comic, Reader, Genre, Borrowing, Review, Publisher
+from comics.models import Author, Comic, Reader, Review, Publisher, ComicAuthor, Borrowing, Genre
 
 T = TypeVar('T')
 
@@ -17,6 +18,15 @@ class IRepository(ABC, Generic[T]):
     def add(self, entity: T) -> T:
         raise NotImplementedError
 
+    # Додано: update та delete, бо вони потрібні у view/serializer-ах
+    @abstractmethod
+    def update(self, entity: T) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete(self, entity: T) -> None:
+        raise NotImplementedError
+
 
 class IAuthorRepository(IRepository[Author]):
     pass
@@ -27,14 +37,17 @@ class IComicRepository(IRepository[Comic]):
 class IReaderRepository(IRepository[Reader]):
     pass
 
-class IGenreRepository(IRepository[Genre]):
-    pass
-
-class IBorrowingRepository(IRepository[Borrowing]): # <- Виправлено
-    pass
-
-class IReviewRepository(IRepository[Review]): # <- Виправлено
+class IReviewRepository(IRepository[Review]):
     pass
 
 class IPublisherRepository(IRepository[Publisher]):
+    pass
+
+class IComicAuthorRepository(IRepository[ComicAuthor]):
+    pass
+
+class IBorrowingRepository(IRepository[Borrowing]):
+    pass
+
+class IGenreRepository(IRepository[Genre]):
     pass

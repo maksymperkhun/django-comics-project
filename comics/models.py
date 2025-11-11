@@ -1,3 +1,5 @@
+import datetime
+
 from django.db import models
 from django.utils import timezone
 
@@ -56,8 +58,8 @@ class Reader(models.Model):
 class Comic(models.Model):
     comicid = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255)
-    volume = models.IntegerField(null=True, blank=True)
-    releasedate = models.DateField()
+    volume = models.IntegerField()
+    releasedate = models.DateField(default=datetime.date.today())
     availablenumber = models.IntegerField()
     publisher = models.ForeignKey(Publisher, on_delete=models.CASCADE, db_column='publisherid')
     genre = models.ForeignKey(Genre, on_delete=models.SET_NULL, null=True, db_column='genreid')
@@ -71,6 +73,7 @@ class Comic(models.Model):
         return self.title
 
 class ComicAuthor(models.Model):
+    comicauthorid = models.AutoField(primary_key=True)
     comic = models.ForeignKey(Comic, on_delete=models.CASCADE, db_column='comicid')
     author = models.ForeignKey(Author, on_delete=models.CASCADE, db_column='authorid')
 
@@ -94,7 +97,7 @@ class Review(models.Model):
         return f"Review for {self.comic.title} by {self.reader.firstname}"
 
 class Borrowing(models.Model):
-    borrowingid = models.AutoField(primary_key=True)
+    borrowid = models.AutoField(primary_key=True)
     comic = models.ForeignKey(Comic, on_delete=models.CASCADE, db_column='comicid')
     reader = models.ForeignKey(Reader, on_delete=models.CASCADE, db_column='readerid')
     borrowdate = models.DateField(default=timezone.now)
