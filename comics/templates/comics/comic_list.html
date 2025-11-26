@@ -1,0 +1,9 @@
+<h1>Список коміксів</h1>
+<a href="{% url 'comic_new' %}">Додати новий</a>
+<ul>
+{% for comic in comics %}
+    <li>
+        <a href="{% url 'comic_detail' comic.pk %}">{{ comic.title }}</a>
+        - {{ comic.publisher.name }} </li>
+{% endfor %}
+</ul>

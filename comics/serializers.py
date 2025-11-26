@@ -87,7 +87,6 @@ class ComicAuthorSerializer(serializers.ModelSerializer):
 
 class ComicSerializer(serializers.ModelSerializer):
     authors = serializers.PrimaryKeyRelatedField(many=True, queryset=Author.objects.all())
-    # releasedate = serializers.DateTimeField(format='%Y-%m-%d', default=datetime.date.today())
 
 
     class Meta:
@@ -98,7 +97,6 @@ class ComicSerializer(serializers.ModelSerializer):
         authors = validated_data.pop('authors', [])
         comic = Comic(**validated_data)
         comic = comic_repo.add(comic)
-
 
         for author in authors:
             ca = ComicAuthor(comic=comic, author=author)

@@ -1,0 +1,9 @@
+<h1>{{ comic.title }}</h1>
+<p>Видавець: {{ comic.publisher.name }}</p>
+
+<a href="{% url 'comic_edit' comic.pk %}">Редагувати</a>
+
+<form action="{% url 'comic_delete' comic.pk %}" method="post">
+    {% csrf_token %}
+    <input type="submit" value="Видалити">
+</form>

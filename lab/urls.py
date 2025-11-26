@@ -17,8 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 import comics.urls
+from comics import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(comics.urls)),
+    path('', include(comics.urls)),
+
+
+    path('external-list/', views.external_api_list, name='external_list'),
+    path('external-delete/<int:item_id>/', views.external_api_delete, name='external_delete'),
 ]

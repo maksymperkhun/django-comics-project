@@ -116,6 +116,53 @@ class BorrowingViewSet(GenericRepoViewSet):
     serializer_class = BorrowingSerializer
 
 
+# comics/views.py
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Comic
+from .forms import ComicForm
+
+# 1. Список об'єктів
+def comic_list(request):
+    comics = Comic.objects.all()
+    return render(request, 'comics/comic_list.html', {'comics': comics})
+
+# 2. Деталі об'єкта
+def comic_detail(request, pk):
+    comic = get_object_or_404(Comic, pk=pk)
+    return render(request, 'comics/comic_detail.html', {'comic': comic})
+
+# 3. Створення нового об'єкта
+def comic_create(request):
+    if request.method == "POST":
+        form = ComicForm(request.POST)
+        if form.is_valid():
+            comic = form.save()
+            return redirect('comic_detail', pk=comic.pk)
+    else:
+        form = ComicForm()
+    return render(request, 'comics/comic_form.html', {'form': form, 'action': 'Створити'})
+
+# 4. Редагування об'єкта
+def comic_edit(request, pk):
+    comic = get_object_or_404(Comic, pk=pk)
+    if request.method == "POST":
+        form = ComicForm(request.POST, instance=comic) # instance заповнює форму старими даними
+        if form.is_valid():
+            form.save()
+            return redirect('comic_detail', pk=comic.pk)
+    else:
+        form = ComicForm(instance=comic)
+    return render(request, 'comics/comic_form.html', {'form': form, 'action': 'Редагувати'})
+
+# 5. Видалення об'єкта
+def comic_delete(request, pk):
+    comic = get_object_or_404(Comic, pk=pk)
+    if request.method == "POST":
+        comic.delete()
+        return redirect('comic_list')
+    return render(request, 'comics/comic_confirm_delete.html', {'comic': comic})
+
+
 
 @api_view(['GET'])
 def aggregated_report(request):
@@ -151,3 +198,27 @@ def aggregated_report(request):
         'active_borrowings': active_borrowings,
     }
     return Response(report)
+
+
+from django.shortcuts import render, redirect
+from .NetworkHelper import NetworkHelper
+
+API_URL = "http://127.0.0.1:8001/api/clients/"
+API_USER = "admin"
+API_PASS = "admin"
+
+
+def external_api_list(request):
+    helper = NetworkHelper(API_URL, API_USER, API_PASS)
+
+    # Отримуємо дані з чужого сайту
+    external_data = helper.get_list()
+
+    return render(request, 'comics/api_list.html', {'items': external_data})
+
+
+def external_api_delete(request, item_id):
+    if request.method == "POST":
+        helper = NetworkHelper(API_URL, API_USER, API_PASS)
+        helper.delete_item(item_id)
+    return redirect('external_list')

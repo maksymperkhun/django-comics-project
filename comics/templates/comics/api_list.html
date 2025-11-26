@@ -1,0 +1,16 @@
+<h1>Список об'єктів з API друга</h1>
+
+<ul>
+    {% for item in items %}
+        <li>
+            <strong>{{ item.full_name }}</strong> (ID: {{ item.id }})
+
+            <form action="{% url 'external_delete' item_id=item.id %}" method="POST" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit">Видалити через API</button>
+            </form>
+        </li>
+    {% empty %}
+        <li>Немає даних або помилка з'єднання</li>
+    {% endfor %}
+</ul>
