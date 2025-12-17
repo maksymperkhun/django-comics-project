@@ -1,4 +1,4 @@
-# comics/repositories.py
+# comics/repositoriesdir.py
 from typing import List, Optional
 from comics.models import Author, Comic, Reader, Genre, Review, Borrowing, ComicAuthor, Publisher
 from .interfaces import (

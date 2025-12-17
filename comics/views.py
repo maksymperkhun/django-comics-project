@@ -1,9 +1,10 @@
+from bokeh.resources import CDN
 from rest_framework import viewsets, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action, api_view
 from .serializers import *
-from comics.repositories.django_repositories import *
+from comics.repositoriesdir.django_repositories import *
 from comics.models import Comic, Review, Borrowing
 
 author_repo = DjangoAuthorRepository()
@@ -222,3 +223,351 @@ def external_api_delete(request, item_id):
         helper = NetworkHelper(API_URL, API_USER, API_PASS)
         helper.delete_item(item_id)
     return redirect('external_list')
+
+
+from rest_framework.views import APIView
+
+
+
+class BasePandasView(APIView):
+    def export_data(self, queryset, fields):
+        data = list(queryset.values(*fields))
+        df = pd.DataFrame(data)
+
+        if df.empty:
+            return Response({"message": "Даних не знайдено", "data": []})
+
+        return Response(df.to_dict(orient='records'))
+
+
+class PublisherInventoryView(BasePandasView):
+    def get(self, request):
+        qs = AnalyticsRepository.get_top_publishers_by_inventory()
+        return self.export_data(qs, fields=['name', 'country', 'total_stock', 'titles_count'])
+
+
+class TopAuthorsView(BasePandasView):
+    def get(self, request):
+        qs = AnalyticsRepository.get_highly_rated_authors()
+        return self.export_data(qs, fields=['firstname', 'lastname', 'avg_rating', 'review_count'])
+
+
+class ReleaseActivityView(BasePandasView):
+    def get(self, request):
+        qs = AnalyticsRepository.get_comics_release_activity()
+        return self.export_data(qs, fields=['year', 'total_released'])
+
+
+class PopularGenresView(BasePandasView):
+    def get(self, request):
+        qs = AnalyticsRepository.get_popular_genres()
+        return self.export_data(qs, fields=['genrename', 'borrow_count'])
+
+
+class ActiveReadersView(BasePandasView):
+    def get(self, request):
+        qs = AnalyticsRepository.get_active_readers()
+        return self.export_data(qs, fields=['firstname', 'lastname', 'email', 'books_borrowed'])
+
+
+class ComicReviewsView(BasePandasView):
+    def get(self, request):
+        qs = AnalyticsRepository.get_most_reviewed_comics()
+        return self.export_data(qs, fields=['title', 'reviews_total', 'rating_avg'])
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+
+
+class BasicStatsView(APIView):
+    def get(self, request):
+        comics_qs = AnalyticsRepository.get_raw_comic_data()
+        reviews_qs = AnalyticsRepository.get_raw_review_data()
+
+        df_comics = pd.DataFrame(list(comics_qs))
+        df_reviews = pd.DataFrame(list(reviews_qs))
+
+        if df_comics.empty or df_reviews.empty:
+            return Response({"message": "Not enough data for statistics"})
+
+        stock_stats = df_comics['availablenumber'].describe().to_dict()
+
+        median_stock = df_comics['availablenumber'].median()
+
+        rating_stats = {
+            'min_rating': df_reviews['rating'].min(),
+            'max_rating': df_reviews['rating'].max(),
+            'mean_rating': round(df_reviews['rating'].mean(), 2),
+            'median_rating': df_reviews['rating'].median()
+        }
+
+        genre_grouping = df_comics.groupby('genre__genrename')['availablenumber'].mean().reset_index()
+        genre_grouping.columns = ['Genre', 'Average_Stock']
+
+        comic_rating_grouping = df_reviews.groupby('comic__title')['rating'].max().reset_index()
+        comic_rating_grouping.columns = ['Comic', 'Max_Rating']
+
+        response_data = {
+            "general_stats": {
+                "stock_statistics": stock_stats,
+                "stock_median_explicit": median_stock,
+                "rating_statistics": rating_stats
+            },
+            "grouped_analysis": {
+                "avg_stock_by_genre": genre_grouping.to_dict(orient='records'),
+                "max_rating_by_comic": comic_rating_grouping.to_dict(orient='records')
+            }
+        }
+
+        return Response(response_data)
+
+
+from django.shortcuts import render
+from rest_framework.views import APIView
+import pandas as pd
+import plotly.express as px
+import plotly.io as pio
+
+
+from .repositories import AnalyticsRepository
+
+
+class DashboardPlotlyView(APIView):
+    def get(self, request):
+        min_stock = int(request.GET.get('min_stock', 0))
+
+        charts = []
+
+        qs1 = AnalyticsRepository.get_top_publishers_by_inventory()
+        df1 = pd.DataFrame(list(qs1.values('name', 'total_stock')))
+        if not df1.empty:
+            df1 = df1[df1['total_stock'] >= min_stock]
+            fig1 = px.bar(df1, x='name', y='total_stock', title=f"Видавництва з > {min_stock} книг", color='name')
+            charts.append(pio.to_html(fig1, full_html=False))
+
+
+        qs2 = AnalyticsRepository.get_highly_rated_authors()
+        df2 = pd.DataFrame(list(qs2.values('lastname', 'avg_rating', 'review_count')))
+        if not df2.empty:
+            fig2 = px.scatter(df2, x='review_count', y='avg_rating', hover_name='lastname', size='review_count',
+                              title="Автори: Рейтинг vs Кількість відгуків")
+            charts.append(pio.to_html(fig2, full_html=False))
+
+
+        qs3 = AnalyticsRepository.get_comics_release_activity()
+        df3 = pd.DataFrame(list(qs3.values('year', 'total_released')))
+        if not df3.empty:
+            df3 = df3.sort_values('year')
+            fig3 = px.line(df3, x='year', y='total_released', markers=True, title="Динаміка випуску коміксів")
+            charts.append(pio.to_html(fig3, full_html=False))
+
+
+        qs4 = AnalyticsRepository.get_popular_genres()
+        df4 = pd.DataFrame(list(qs4.values('genrename', 'borrow_count')))
+        if not df4.empty:
+            fig4 = px.pie(df4, values='borrow_count', names='genrename', title="Частка жанрів у позичаннях")
+            charts.append(pio.to_html(fig4, full_html=False))
+
+
+        qs5 = AnalyticsRepository.get_active_readers()
+        df5 = pd.DataFrame(list(qs5.values('lastname', 'books_borrowed')))
+
+        if not df5.empty:
+            df5 = df5.sort_values('books_borrowed', ascending=True)
+            df5_top = df5.tail(20)
+
+            fig5 = px.bar(
+                df5_top,
+                x='books_borrowed',
+                y='lastname',
+                orientation='h',
+                title="Топ-20 Активних читачів",
+                text='books_borrowed',
+            )
+            charts.append(pio.to_html(fig5, full_html=False))
+
+
+        qs6 = AnalyticsRepository.get_most_reviewed_comics()
+        df6 = pd.DataFrame(list(qs6.values('title', 'rating_avg', 'reviews_total')))
+
+        if not df6.empty:
+            df6_top = df6.head(20)
+
+            fig6 = px.bar(
+                df6_top,
+                x='title',
+                y='rating_avg',
+                title="Рейтинг популярних коміксів",
+                labels={'rating_avg': 'Рейтинг', 'title': 'Комікс'}
+            )
+
+            charts.append(pio.to_html(fig6, full_html=False))
+        return render(request, 'comics/dashboard_plotly.html', {
+            'charts': charts,
+            'filters': {'min_stock': min_stock}
+        })
+
+
+
+from bokeh.plotting import figure
+from bokeh.embed import components
+from bokeh.models import ColumnDataSource, HoverTool
+from bokeh.resources import CDN
+from bokeh.transform import factor_cmap, cumsum, linear_cmap
+
+from math import pi
+
+
+class DashboardBokehView(APIView):
+    def get(self, request):
+        min_stock = int(request.GET.get('min_stock', 0))
+        script_divs = []
+
+        qs1 = AnalyticsRepository.get_top_publishers_by_inventory()
+        df1 = pd.DataFrame(list(qs1.values('name', 'total_stock')))
+        if not df1.empty:
+            df1 = df1[df1['total_stock'] >= min_stock]
+            source = ColumnDataSource(df1)
+            publishers = df1['name'].tolist()
+
+            p = figure(x_range=publishers, height=400, title="1. Видавництва (Inventory)",
+                       toolbar_location=None, tools="", sizing_mode='stretch_width')
+            p.vbar(x='name', top='total_stock', width=0.9, source=source,
+                   line_color='white')
+            script_divs.append(components(p))
+
+
+        qs2 = AnalyticsRepository.get_highly_rated_authors()
+        df2 = pd.DataFrame(list(qs2.values('lastname', 'avg_rating', 'review_count')))
+        if not df2.empty:
+            df2 = df2.head(20)
+            source = ColumnDataSource(df2)
+            p = figure(height=400, title="2. Автори (Rating vs Reviews)", sizing_mode='stretch_width')
+            p.circle(x='review_count', y='avg_rating', size=15, source=source)
+            script_divs.append(components(p))
+
+
+        qs3 = AnalyticsRepository.get_comics_release_activity()
+        df3 = pd.DataFrame(list(qs3.values('year', 'total_released')))
+        if not df3.empty:
+            df3 = df3.sort_values('year')
+            p = figure(height=400, title="3. Динаміка публікацій", sizing_mode='stretch_width')
+            p.line(df3['year'], df3['total_released'], line_width=3, color="navy")
+            p.circle(df3['year'], df3['total_released'], size=8, line_color="navy")
+            script_divs.append(components(p))
+
+
+        qs4 = AnalyticsRepository.get_popular_genres()
+        df4 = pd.DataFrame(list(qs4.values('genrename', 'borrow_count')))
+
+        if not df4.empty:
+            df4['angle'] = df4['borrow_count'] / df4['borrow_count'].sum() * 2 * pi
+
+            source = ColumnDataSource(df4)
+
+            p = figure(height=400, title="4. Популярні жанри (Pie Chart)", toolbar_location=None,
+                       tools="hover", tooltips="@genrename: @borrow_count", x_range=(-0.5, 1.0),
+                       sizing_mode='stretch_width')
+
+            p.wedge(x=0, y=1, radius=0.4,
+                    start_angle=cumsum('angle', include_zero=True), end_angle=cumsum('angle'),
+                    line_color="white", legend_field='genrename', source=source)
+
+            p.axis.axis_label = None
+            p.axis.visible = False
+            p.grid.grid_line_color = None
+
+            script_divs.append(components(p))
+
+        qs5 = AnalyticsRepository.get_active_readers()
+        df5 = pd.DataFrame(list(qs5.values('lastname', 'books_borrowed')))
+
+        if not df5.empty:
+            df5 = df5.sort_values('books_borrowed', ascending=True).tail(15)  # Топ-15
+            readers = df5['lastname'].tolist()
+            source = ColumnDataSource(df5)
+
+            p = figure(y_range=readers, height=400, title="5. Топ читачів (Horizontal)",
+                       toolbar_location=None, tools="", sizing_mode='stretch_width')
+
+            p.hbar(y='lastname', right='books_borrowed', height=0.8, source=source,
+                   line_color="white")
+
+            script_divs.append(components(p))
+
+
+        qs6 = AnalyticsRepository.get_most_reviewed_comics()
+        df6 = pd.DataFrame(list(qs6.values('title', 'rating_avg', 'reviews_total')))
+
+        if not df6.empty:
+            df6 = df6.head(20)
+            source = ColumnDataSource(df6)
+            titles = df6['title'].tolist()
+
+            p = figure(x_range=titles, height=400, title="6. Рейтинг популярних коміксів (Color Map)",
+                       toolbar_location=None, tools="", sizing_mode='stretch_width')
+
+            p.vbar(x='title', top='rating_avg', width=0.9, source=source)
+
+            p.xaxis.major_label_orientation = 0.785
+
+            script_divs.append(components(p))
+
+        resources = CDN.render()
+
+        return render(request, 'comics/dashboard_bokeh.html', {
+            'charts': script_divs,
+            'filters': {'min_stock': min_stock},
+            'resources': resources
+        })
+
+
+from .benchmark import DatabaseBenchmark
+
+
+class BenchmarkView(APIView):
+
+
+    def get(self, request):
+        # При GET запиті просто показуємо порожню сторінку з кнопкою
+        return render(request, 'comics/benchmark.html', {'chart': None})
+
+    def post(self, request):
+        # Отримуємо налаштування з форми
+        try:
+            total_requests = int(request.POST.get('total_requests', 200))
+        except ValueError:
+            total_requests = 200
+
+        # 1. Запускаємо бенчмарк
+        # Тестуємо на 1, 2, 4, 8, 16, 32 потоках
+        data = DatabaseBenchmark.run_benchmark(
+            total_requests=total_requests,
+            max_workers_list=[1, 2, 4, 5, 8, 10, 16, 32]
+        )
+
+        # 2. Будуємо графік Plotly
+        df = pd.DataFrame(data)
+
+        fig = px.line(
+            df,
+            x='workers',
+            y='time',
+            markers=True,
+            title=f"Залежність часу виконання від кількості потоків ({total_requests} запитів)",
+            labels={'workers': 'Кількість потоків', 'time': 'Час виконання (сек)'}
+        )
+
+        # Додаємо лінію тренду або просто прикрашаємо
+        fig.update_layout(
+            xaxis=dict(tickmode='linear'),  # Показувати всі кроки на осі X
+            template="plotly_white"
+        )
+
+        chart_html = pio.to_html(fig, full_html=False)
+
+        return render(request, 'comics/benchmark.html', {
+            'chart': chart_html,
+            'last_requests': total_requests
+        })

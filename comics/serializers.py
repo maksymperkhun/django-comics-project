@@ -3,7 +3,7 @@ import datetime
 
 from rest_framework import serializers
 from .models import *
-from comics.repositories.django_repositories import *
+from comics.repositoriesdir.django_repositories import *
 
 author_repo = DjangoAuthorRepository()
 comic_repo = DjangoComicRepository()

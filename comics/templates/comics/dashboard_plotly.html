@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>Plotly Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+    <h1 class="mb-4">Аналітичний дашборд (Plotly)</h1>
+
+    <div class="card p-3 mb-4 bg-light">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <label for="min_stock" class="form-label">Мін. кількість книг на складі:</label>
+                <input type="range" class="form-range" id="min_stock" name="min_stock"
+                       min="0" max="100000" value="{{ filters.min_stock }}"
+                       oninput="this.nextElementSibling.value = this.value">
+                <output>{{ filters.min_stock }}</output>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Оновити графіки</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="row">
+        {% for chart in charts %}
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        {{ chart|safe }}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

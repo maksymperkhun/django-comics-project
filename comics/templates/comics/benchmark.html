@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>DB Parallel Benchmark</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h2>🚀 Тестування паралельних обчислень (БД)</h2>
+        </div>
+        <div class="card-body">
+            <p class="lead">
+                Цей інструмент виконує серію запитів до бази даних (`SELECT COUNT(*) FROM comic`),
+                використовуючи різну кількість потоків (Threads).
+            </p>
+
+            <form method="post" class="row g-3 align-items-end mb-4 border-bottom pb-4">
+                {% csrf_token %}
+                <div class="col-md-4">
+                    <label for="total_requests" class="form-label">Кількість запитів (Batch Size):</label>
+                    <input type="number" class="form-control" id="total_requests" name="total_requests"
+                           value="{{ last_requests|default:200 }}" min="10" max="1000">
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-danger w-100">
+                        🔥 Запустити тест
+                    </button>
+                </div>
+            </form>
+
+            {% if chart %}
+                <div class="alert alert-success">Тест завершено успішно!</div>
+                <div>
+                    {{ chart|safe }}
+                </div>
+                <div class="mt-3">
+                    <h5>Аналіз результатів:</h5>
+                    <ul>
+                        <li>Якщо графік падає вниз — паралелізм працює ефективно (I/O operations).</li>
+                        <li>Якщо графік вирівнюється — досягнуто ліміту підключень до БД або пропускної здатності каналу.</li>
+                        <li>Якщо графік йде вгору — накладні витрати на створення потоків (Context Switching) перевищують вигоду.</li>
+                    </ul>
+                </div>
+            {% else %}
+                <div class="text-center text-muted py-5">
+                    Натисніть "Запустити тест", щоб побачити графік залежності часу від потоків.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="text-center mt-3">
+        <a href="/dashboard/plotly/" class="btn btn-outline-secondary">← Назад до Дашборду</a>
+    </div>
+</body>
+</html>
