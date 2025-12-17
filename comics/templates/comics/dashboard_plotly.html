@@ -1,3 +1,117 @@
+
+<!--<!DOCTYPE html>-->
+<!--<html lang="uk">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <title>Plotly Dashboard</title>-->
+<!--    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">-->
+<!--</head>-->
+<!--<body class="container mt-4">-->
+<!--    <div class="d-flex justify-content-between align-items-center mb-4">-->
+<!--        <h1>📊 Plotly Дашборд</h1>-->
+<!--        <a href="/dashboard/bokeh/" class="btn btn-outline-primary">Перейти до Bokeh →</a>-->
+<!--    </div>-->
+
+<!--    <form method="get" id="filterForm">-->
+<!--        <div class="row mb-4">-->
+
+<!--            <div class="col-md-4">-->
+<!--                <div class="card h-100 border-primary">-->
+<!--                    <div class="card-header bg-primary text-white">Налаштування Графіка №1</div>-->
+<!--                    <div class="card-body bg-light">-->
+<!--                        <label class="form-label fw-bold">Мін. кількість книг на складі:-->
+<!--                            <span id="stockVal" class="badge bg-primary">{{ filters.min_stock }}</span>-->
+<!--                        </label>-->
+<!--                        <input type="range" class="form-range" name="min_stock"-->
+<!--                               min="0" max="100" step="1" value="{{ filters.min_stock }}"-->
+<!--                               oninput="document.getElementById('stockVal').innerText = this.value">-->
+<!--                        <small class="text-muted">Фільтрує видавництва, у яких менше книг.</small>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+
+<!--            <div class="col-md-8">-->
+<!--                <div class="card h-100 border-success">-->
+<!--                    <div class="card-header bg-success text-white">Налаштування Графіка №2</div>-->
+<!--                    <div class="card-body bg-light">-->
+<!--                        <div class="row g-3">-->
+<!--                            <div class="col-md-6 border-end">-->
+<!--                                <label class="form-label fw-bold text-center w-100">-->
+<!--                                    Діапазон Рейтингу:-->
+<!--                                    <span class="badge bg-success">{{ filters.min_rating }}</span> - -->
+<!--                                    <span class="badge bg-success">{{ filters.max_rating }}</span>-->
+<!--                                </label>-->
+
+<!--                                <div class="d-flex align-items-center">-->
+<!--                                    <span class="me-2">Min</span>-->
+<!--                                    <input type="range" class="form-range" name="min_rating"-->
+<!--                                           min="0" max="5" step="0.01" value="{{ filters.min_rating }}">-->
+<!--                                </div>-->
+<!--                                <div class="d-flex align-items-center mt-2">-->
+<!--                                    <span class="me-2">Max</span>-->
+<!--                                    <input type="range" class="form-range" name="max_rating"-->
+<!--                                           min="0" max="5" step="0.01" value="{{ filters.max_rating }}">-->
+<!--                                </div>-->
+<!--                            </div>-->
+
+<!--                            <div class="col-md-6">-->
+<!--                                <label for="sort_by" class="form-label fw-bold">Сортування авторів:</label>-->
+<!--                                <select class="form-select" name="sort_by">-->
+<!--                                    <option value="rating_desc" {% if filters.sort_by == 'rating_desc' %}selected{% endif %}>-->
+<!--                                        Спочатку високий рейтинг-->
+<!--                                    </option>-->
+<!--                                    <option value="rating_asc" {% if filters.sort_by == 'rating_asc' %}selected{% endif %}>-->
+<!--                                        Спочатку низький рейтинг-->
+<!--                                    </option>-->
+<!--                                    <option value="name" {% if filters.sort_by == 'name' %}selected{% endif %}>-->
+<!--                                        🔤 За алфавітом (A-Z)-->
+<!--                                    </option>-->
+<!--                                </select>-->
+<!--                            </div>-->
+<!--                        </div>-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+
+<!--        </div>-->
+<!--    </form>-->
+
+<!--    <div class="row">-->
+<!--        {% for chart in charts %}-->
+<!--            <div class="col-md-12 mb-5">-->
+<!--                <div class="card shadow">-->
+<!--                    <div class="card-body p-1">-->
+<!--                        {{ chart|safe }}-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--        {% endfor %}-->
+<!--    </div>-->
+
+<!--    <script>-->
+<!--        const form = document.getElementById('filterForm');-->
+
+<!--        form.querySelectorAll('input[type="range"], select').forEach(el => {-->
+<!--            el.addEventListener('change', () => {-->
+
+<!--                const minInput = form.querySelector('input[name="min_rating"]');-->
+<!--                const maxInput = form.querySelector('input[name="max_rating"]');-->
+
+<!--                if (parseFloat(minInput.value) > parseFloat(maxInput.value)) {-->
+<!--                    let temp = minInput.value;-->
+<!--                    minInput.value = maxInput.value;-->
+<!--                    maxInput.value = temp;-->
+<!--                }-->
+
+<!--                form.submit();-->
+<!--            });-->
+<!--        });-->
+<!--    </script>-->
+<!--</body>-->
+<!--</html>-->
+
+
+
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -6,33 +120,104 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="container mt-4">
-    <h1 class="mb-4">Аналітичний дашборд (Plotly)</h1>
-
-    <div class="card p-3 mb-4 bg-light">
-        <form method="get" class="row g-3">
-            <div class="col-md-4">
-                <label for="min_stock" class="form-label">Мін. кількість книг на складі:</label>
-                <input type="range" class="form-range" id="min_stock" name="min_stock"
-                       min="0" max="100000" value="{{ filters.min_stock }}"
-                       oninput="this.nextElementSibling.value = this.value">
-                <output>{{ filters.min_stock }}</output>
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100">Оновити графіки</button>
-            </div>
-        </form>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Plotly Дашборд</h1>
+        <a href="/dashboard/bokeh/" class="btn btn-outline-primary">Перейти до Bokeh →</a>
     </div>
+
+    <form method="get" id="filterForm">
+        <div class="row mb-4">
+
+            <div class="col-md-5"> <div class="card h-100 border-primary">
+                    <div class="card-header bg-primary text-white">Налаштування Графіка №1</div>
+                    <div class="card-body bg-light">
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Мін. кількість книг:
+                                <span id="stockVal" class="badge bg-primary">{{ filters.min_stock }}</span>
+                            </label>
+                            <input type="range" class="form-range" name="min_stock"
+                                   min="0" max="100000" step="1" value="{{ filters.min_stock }}"
+                                   oninput="document.getElementById('stockVal').innerText = this.value">
+                        </div>
+
+                        <div class="mb-0">
+                            <label for="sort_by" class="form-label fw-bold">Сортування:</label>
+                            <select class="form-select" name="sort_by">
+                                <option value="stock_desc" {% if filters.sort_by == 'stock_desc' %}selected{% endif %}>
+                                    За кількістю (Спадання)
+                                </option>
+                                <option value="stock_asc" {% if filters.sort_by == 'stock_asc' %}selected{% endif %}>
+                                    За кількістю (Зростання)
+                                </option>
+                                <option value="name" {% if filters.sort_by == 'name' %}selected{% endif %}>
+                                    За назвою (A-Z)
+                                </option>
+                            </select>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card h-100 border-success">
+                    <div class="card-header bg-success text-white">Налаштування Графіка №2</div>
+                    <div class="card-body bg-light d-flex flex-column justify-content-center">
+
+                        <label class="form-label fw-bold text-center w-100 mb-3">
+                            Діапазон Рейтингу:
+                            <span class="badge bg-success">{{ filters.min_rating }}</span> -
+                            <span class="badge bg-success">{{ filters.max_rating }}</span>
+                        </label>
+
+                        <div class="row align-items-center">
+                            <div class="col-2 text-end">Min</div>
+                            <div class="col-10">
+                                <input type="range" class="form-range" name="min_rating"
+                                       min="0" max="10" step="0.5" value="{{ filters.min_rating }}">
+                            </div>
+                        </div>
+
+                        <div class="row align-items-center mt-3">
+                            <div class="col-2 text-end">Max</div>
+                            <div class="col-10">
+                                <input type="range" class="form-range" name="max_rating"
+                                       min="0" max="10" step="0.5" value="{{ filters.max_rating }}">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </form>
 
     <div class="row">
         {% for chart in charts %}
-            <div class="col-md-6 mb-4">
-                <div class="card shadow-sm">
-                    <div class="card-body">
+            <div class="col-md-12 mb-5">
+                <div class="card shadow">
+                    <div class="card-body p-1">
                         {{ chart|safe }}
                     </div>
                 </div>
             </div>
         {% endfor %}
     </div>
+
+    <script>
+        const form = document.getElementById('filterForm');
+        form.querySelectorAll('input[type="range"], select').forEach(el => {
+            el.addEventListener('change', () => {
+                const minInput = form.querySelector('input[name="min_rating"]');
+                const maxInput = form.querySelector('input[name="max_rating"]');
+                if (parseFloat(minInput.value) > parseFloat(maxInput.value)) {
+                    let temp = minInput.value; minInput.value = maxInput.value; maxInput.value = temp;
+                }
+                form.submit();
+            });
+        });
+    </script>
 </body>
 </html>

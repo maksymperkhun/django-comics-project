@@ -305,8 +305,8 @@ class BasicStatsView(APIView):
         genre_grouping = df_comics.groupby('genre__genrename')['availablenumber'].mean().reset_index()
         genre_grouping.columns = ['Genre', 'Average_Stock']
 
-        comic_rating_grouping = df_reviews.groupby('comic__title')['rating'].max().reset_index()
-        comic_rating_grouping.columns = ['Comic', 'Max_Rating']
+        # comic_rating_grouping = df_reviews.groupby('comic__title')['rating'].max().reset_index()
+        # comic_rating_grouping.columns = ['Comic', 'Max_Rating']
 
         response_data = {
             "general_stats": {
@@ -316,7 +316,7 @@ class BasicStatsView(APIView):
             },
             "grouped_analysis": {
                 "avg_stock_by_genre": genre_grouping.to_dict(orient='records'),
-                "max_rating_by_comic": comic_rating_grouping.to_dict(orient='records')
+                # "max_rating_by_comic": comic_rating_grouping.to_dict(orient='records')
             }
         }
 
@@ -336,31 +336,71 @@ from .repositories import AnalyticsRepository
 class DashboardPlotlyView(APIView):
     def get(self, request):
         min_stock = int(request.GET.get('min_stock', 0))
+        sort_by = request.GET.get('sort_by', 'stock_desc')
+
+        min_rating = float(request.GET.get('min_rating', 0))
+        max_rating = float(request.GET.get('max_rating', 10))
 
         charts = []
 
+
         qs1 = AnalyticsRepository.get_top_publishers_by_inventory()
         df1 = pd.DataFrame(list(qs1.values('name', 'total_stock')))
+
         if not df1.empty:
             df1 = df1[df1['total_stock'] >= min_stock]
-            fig1 = px.bar(df1, x='name', y='total_stock', title=f"Видавництва з > {min_stock} книг", color='name')
+
+            if sort_by == 'name':
+                df1 = df1.sort_values('name')
+                sort_title = "(за назвою)"
+            elif sort_by == 'stock_asc':
+                df1 = df1.sort_values('total_stock', ascending=True)
+                sort_title = "(зростання)"
+            else:
+                df1 = df1.sort_values('total_stock', ascending=False)
+                sort_title = "(спадання)"
+
+            df1 = df1.head(20)
+
+            fig1 = px.bar(df1, x='name', y='total_stock',
+                          title=f"Видавництва: > {min_stock} книг {sort_title}",
+                          text='total_stock',
+                          labels={'total_stock': 'Кількість', 'name': 'Видавництво'})
             charts.append(pio.to_html(fig1, full_html=False))
+        else:
+            charts.append("<div>Немає даних для Графіка 1</div>")
 
 
         qs2 = AnalyticsRepository.get_highly_rated_authors()
         df2 = pd.DataFrame(list(qs2.values('lastname', 'avg_rating', 'review_count')))
+
         if not df2.empty:
-            fig2 = px.scatter(df2, x='review_count', y='avg_rating', hover_name='lastname', size='review_count',
-                              title="Автори: Рейтинг vs Кількість відгуків")
+            df2 = df2[
+                (df2['avg_rating'] >= min_rating) &
+                (df2['avg_rating'] <= max_rating)
+                ]
+
+            df2 = df2.sort_values('avg_rating', ascending=False).head(40)
+
+            fig2 = px.scatter(df2, x='review_count', y='avg_rating',
+                              size='review_count', hover_name='lastname',
+                              title=f"Автори: Рейтинг {min_rating}-{max_rating} (Топ кращих)",
+                              range_y=[0, 5.5])
             charts.append(pio.to_html(fig2, full_html=False))
+        else:
+            charts.append("<div>Немає даних для Графіка 2</div>")
 
 
         qs3 = AnalyticsRepository.get_comics_release_activity()
         df3 = pd.DataFrame(list(qs3.values('year', 'total_released')))
+
         if not df3.empty:
             df3 = df3.sort_values('year')
-            fig3 = px.line(df3, x='year', y='total_released', markers=True, title="Динаміка випуску коміксів")
+            fig3 = px.line(df3, x='year', y='total_released', markers=True,
+                           title="Загальна динаміка випуску коміксів")
             charts.append(pio.to_html(fig3, full_html=False))
+        else:
+            charts.append("<div>Немає даних для Графіка 3</div>")
 
 
         qs4 = AnalyticsRepository.get_popular_genres()
@@ -403,10 +443,21 @@ class DashboardPlotlyView(APIView):
             )
 
             charts.append(pio.to_html(fig6, full_html=False))
+        context_filters = {
+            'min_stock': min_stock,
+            'min_rating': min_rating,
+            'max_rating': max_rating,
+            'sort_by': sort_by
+        }
+
         return render(request, 'comics/dashboard_plotly.html', {
             'charts': charts,
-            'filters': {'min_stock': min_stock}
+            'filters': context_filters
         })
+        # return render(request, 'comics/dashboard_plotly.html', {
+        #     'charts': charts,
+        #     'filters': {'min_stock': min_stock}
+        # })
 
 
 
@@ -530,24 +581,19 @@ class BenchmarkView(APIView):
 
 
     def get(self, request):
-        # При GET запиті просто показуємо порожню сторінку з кнопкою
         return render(request, 'comics/benchmark.html', {'chart': None})
 
     def post(self, request):
-        # Отримуємо налаштування з форми
         try:
             total_requests = int(request.POST.get('total_requests', 200))
         except ValueError:
             total_requests = 200
 
-        # 1. Запускаємо бенчмарк
-        # Тестуємо на 1, 2, 4, 8, 16, 32 потоках
         data = DatabaseBenchmark.run_benchmark(
             total_requests=total_requests,
             max_workers_list=[1, 2, 4, 5, 8, 10, 16, 32]
         )
 
-        # 2. Будуємо графік Plotly
         df = pd.DataFrame(data)
 
         fig = px.line(
@@ -559,9 +605,8 @@ class BenchmarkView(APIView):
             labels={'workers': 'Кількість потоків', 'time': 'Час виконання (сек)'}
         )
 
-        # Додаємо лінію тренду або просто прикрашаємо
         fig.update_layout(
-            xaxis=dict(tickmode='linear'),  # Показувати всі кроки на осі X
+            xaxis=dict(tickmode='linear'),
             template="plotly_white"
         )
 
